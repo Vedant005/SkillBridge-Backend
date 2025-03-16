@@ -18,4 +18,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
+// routes import
+
+import gigsRouter from "./routes/gigs.js";
+
+app.use("/api/v1/gigs", gigsRouter);
+
 export { app };
