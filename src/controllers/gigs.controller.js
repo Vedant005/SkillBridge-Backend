@@ -1,7 +1,7 @@
-import { Gigs } from "../models/gigs";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { Gigs } from "../models/gigs.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const getGigs = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
@@ -29,5 +29,7 @@ const getGigs = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Could not fetch gigs");
   }
 });
+
+const createGigs = asyncHandler(async (req, res) => {});
 
 export { getGigs };
