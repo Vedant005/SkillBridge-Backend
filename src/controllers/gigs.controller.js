@@ -29,7 +29,57 @@ const getGigs = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Could not fetch gigs");
   }
 });
+// Create Gig
+const createGigs = asyncHandler(async (req, res) => {
+  const gigData = req.body;
 
-const createGigs = asyncHandler(async (req, res) => {});
+  try {
+    const newGig = await Gigs.create(gigData);
+    res
+      .status(201)
+      .json(new ApiResponse(201, newGig, "Gig created successfully"));
+  } catch (error) {
+    throw new ApiError(500, "Failed to create gig");
+  }
+});
 
-export { getGigs };
+// Update Gig
+const updateGigs = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updateData = req.body;
+
+  try {
+    const updatedGig = await Gigs.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+
+    if (!updatedGig) {
+      throw new ApiError(404, "Gig not found");
+    }
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, updatedGig, "Gig updated successfully"));
+  } catch (error) {
+    throw new ApiError(500, "Failed to update gig");
+  }
+});
+
+// Delete Gig
+const deleteGigs = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletedGig = await Gigs.findByIdAndDelete(id);
+
+    if (!deletedGig) {
+      throw new ApiError(404, "Gig not found");
+    }
+
+    res.status(200).json(new ApiResponse(200, {}, "Gig deleted successfully"));
+  } catch (error) {
+    throw new ApiError(500, "Failed to delete gig");
+  }
+});
+
+export { getGigs, createGigs, updateGigs, deleteGigs };
