@@ -4,7 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const getGigs = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 30 } = req.query;
 
   const pageNumber = parseInt(page, 10);
   const pageSize = parseInt(limit, 10);
@@ -27,6 +27,21 @@ const getGigs = asyncHandler(async (req, res) => {
     );
   } catch (error) {
     throw new ApiError(500, "Could not fetch gigs");
+  }
+});
+
+const getSingleGig = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.params;
+
+    const ifExists = await Gigs.findById(_id);
+    if (!ifExists) {
+      throw new ApiError(401, "GIg does not exist");
+    }
+
+    return res.status(200).json(new ApiResponse(200, ifExists, "Gig fetched"));
+  } catch (error) {
+    throw new ApiError(500, "Could not get the gig");
   }
 });
 // Create Gig
@@ -82,4 +97,4 @@ const deleteGigs = asyncHandler(async (req, res) => {
   }
 });
 
-export { getGigs, createGigs, updateGigs, deleteGigs };
+export { getGigs, getSingleGig, createGigs, updateGigs, deleteGigs };
