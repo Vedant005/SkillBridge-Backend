@@ -20,7 +20,7 @@ app.use(cookieParser());
 
 // routes import
 
-import gigsRouter from "./routes/gigs.js";
+import gigsRouter from "./routes/gigs.route.js";
 
 app.use("/api/v1/gigs", gigsRouter);
 
