@@ -6,69 +6,81 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import axios from "axios";
 
 const getAllGigs = asyncHandler(async (req, res) => {
+  const { gigId } = req.query; // From localStorage
   const { page = 1, limit = 20 } = req.query;
 
   const pageNumber = parseInt(page, 10);
   const pageSize = parseInt(limit, 10);
 
-  // Aggregation pipeline to get gigs from all clients
-  const clientsWithGigs = await Client.aggregate([
-    { $unwind: "$gigs" }, // Flatten gigs array
-    { $skip: (pageNumber - 1) * pageSize },
-    { $limit: pageSize },
-    {
-      $project: {
-        _id: 0,
-        clientId: "$_id",
-        email: 1,
-        location: 1,
-        "gigs.gigId": 1,
-        "gigs.title": 1,
-        "gigs.amount_amount": 1,
-        "gigs.hourly_rate": 1,
-        "gigs.duration": 1,
-        "gigs.type": 1,
-        "gigs.Description": 1,
-        "gigs.Status": 1,
-        "gigs.created_on": 1,
-        "gigs.engagement": 1,
-        "gigs.proposals_tier": 1,
-        "gigs.published_on": 1,
-        "gigs.client_total_reviews": 1,
-        "gigs.occupations_category_pref_label": 1,
-        "gigs.occupations_oservice_pref_label": 1,
-        "gigs.client_total_spent": 1,
-        "gigs.client_location_country": 1,
+  let recommendedGigs = [];
+  let regularGigs = [];
+
+  try {
+    // ✅ Fetch regular gigs (paginated)
+    const clientsWithGigs = await Client.aggregate([
+      { $unwind: "$gigs" },
+      { $skip: (pageNumber - 1) * pageSize },
+      { $limit: pageSize },
+      {
+        $project: {
+          _id: 0,
+          clientId: "$_id",
+          email: 1,
+          location: 1,
+          gigs: "$gigs",
+        },
       },
-    },
-  ]);
+    ]);
 
-  // Count the total gigs across all clients
-  const totalGigs = await Client.aggregate([
-    { $unwind: "$gigs" },
-    { $count: "totalGigs" },
-  ]);
+    // ✅ Fetch recommended gigs if gigId exists
+    if (gigId) {
+      try {
+        const response = await axios.get(
+          `http://127.0.0.1:5000/recommend?gig_id=${gigId}`
+        );
+        recommendedGigs = response.data || [];
+      } catch (error) {
+        console.error("Failed to fetch recommended gigs:", error);
+        recommendedGigs = [];
+      }
+    }
 
-  const total = totalGigs.length > 0 ? totalGigs[0].totalGigs : 0;
+    // ✅ Combine both recommended and regular gigs
+    const combinedGigs = [
+      ...recommendedGigs, // Recommended gigs first
+      ...clientsWithGigs, // Regular gigs below
+    ];
 
-  res.status(200).json(
-    new ApiResponse(200, clientsWithGigs, {
-      pagination: {
-        currentPage: pageNumber,
-        totalPages: Math.ceil(total / pageSize),
-        totalGigs: total,
-      },
-    })
-  );
+    // ✅ Pagination metadata
+    const totalGigs = await Client.aggregate([
+      { $unwind: "$gigs" },
+      { $count: "totalGigs" },
+    ]);
+
+    const total = totalGigs.length > 0 ? totalGigs[0].totalGigs : 0;
+
+    res.status(200).json(
+      new ApiResponse(200, combinedGigs, {
+        pagination: {
+          currentPage: pageNumber,
+          totalPages: Math.ceil(total / pageSize),
+          totalGigs: total,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching gigs:", error);
+    throw new ApiError(500, "Failed to fetch gigs");
+  }
 });
 
 const getSingleGig = asyncHandler(async (req, res) => {
   const { gigId } = req.params;
 
-  // Use aggregation to search through all client gigs by ID
-  const gig = await Client.aggregate([
+  // ✅ Search by string `gigId`
+  const gigs = await Client.aggregate([
     { $unwind: "$gigs" },
-    { $match: { "gigs.gigId": gigId } },
+    { $match: { "gigs.gigId": gigId } }, // ✅ Match by string, not ObjectId
     {
       $project: {
         _id: 0,
@@ -80,13 +92,13 @@ const getSingleGig = asyncHandler(async (req, res) => {
     },
   ]);
 
-  if (!gig || gig.length === 0) {
-    throw new ApiError(404, "Gig not found");
+  if (!gigs || gigs.length === 0) {
+    throw new ApiError(404, "Gig not found"); // ✅ Error handling
   }
 
   res
     .status(200)
-    .json(new ApiResponse(200, gig[0], "Gig fetched successfully"));
+    .json(new ApiResponse(200, gigs[0], "Gig fetched successfully"));
 });
 
 // Create Gig
@@ -155,51 +167,6 @@ const deleteGigs = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "Gig deleted successfully"));
 });
 
-const getRecommendedGigs = asyncHandler(async (req, res) => {
-  const { gigId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
-
-  if (!gigId) {
-    throw new ApiError(400, "Gig ID is required");
-  }
-
-  const pageNumber = parseInt(page, 10);
-  const pageSize = parseInt(limit, 10);
-
-  try {
-    // ✅ Fetch recommendations from Flask server
-    const response = await axios.get(
-      `http://127.0.0.1:5000/recommend?gig_id=${gigId}`
-    );
-
-    const allRecommendedGigs = response.data;
-
-    if (!Array.isArray(allRecommendedGigs)) {
-      throw new ApiError(500, "Invalid response format from Flask server");
-    }
-
-    // ✅ Pagination logic
-    const totalGigs = allRecommendedGigs.length;
-    const startIndex = (pageNumber - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
-    const paginatedGigs = allRecommendedGigs.slice(startIndex, endIndex);
-
-    res.status(200).json(
-      new ApiResponse(200, paginatedGigs, {
-        pagination: {
-          currentPage: pageNumber,
-          totalPages: Math.ceil(totalGigs / pageSize),
-          totalGigs: totalGigs,
-        },
-      })
-    );
-  } catch (error) {
-    console.error("Error fetching recommended gigs:", error);
-    throw new ApiError(500, "Failed to fetch recommended gigs");
-  }
-});
-
 export {
   getAllGigs,
   getSingleGig,
@@ -207,5 +174,4 @@ export {
   getGigsByClient,
   updateGigs,
   deleteGigs,
-  getRecommendedGigs,
 };
