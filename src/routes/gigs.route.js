@@ -2,14 +2,14 @@ import { Router } from "express";
 import {
   createGigs,
   deleteGigs,
-  getGigs,
+  getAllGigs,
   getSingleGig,
   updateGigs,
 } from "../controllers/gigs.controller.js";
 
 const router = Router();
 
-router.route("/").get(getGigs);
+router.route("/").get(getAllGigs);
 
 router.route("/:gigId").get(getSingleGig);
 
