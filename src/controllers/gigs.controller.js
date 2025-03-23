@@ -3,6 +3,7 @@ import { Client } from "../models/client.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import axios from "axios";
 
 const getAllGigs = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
@@ -34,6 +35,8 @@ const getAllGigs = asyncHandler(async (req, res) => {
         "gigs.proposals_tier": 1,
         "gigs.published_on": 1,
         "gigs.client_total_reviews": 1,
+        "gigs.occupations_category_pref_label": 1,
+        "gigs.occupations_oservice_pref_label": 1,
         "gigs.client_total_spent": 1,
         "gigs.client_location_country": 1,
       },
@@ -152,6 +155,51 @@ const deleteGigs = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "Gig deleted successfully"));
 });
 
+const getRecommendedGigs = asyncHandler(async (req, res) => {
+  const { gigId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  if (!gigId) {
+    throw new ApiError(400, "Gig ID is required");
+  }
+
+  const pageNumber = parseInt(page, 10);
+  const pageSize = parseInt(limit, 10);
+
+  try {
+    // ✅ Fetch recommendations from Flask server
+    const response = await axios.get(
+      `http://127.0.0.1:5000/recommend?gig_id=${gigId}`
+    );
+
+    const allRecommendedGigs = response.data;
+
+    if (!Array.isArray(allRecommendedGigs)) {
+      throw new ApiError(500, "Invalid response format from Flask server");
+    }
+
+    // ✅ Pagination logic
+    const totalGigs = allRecommendedGigs.length;
+    const startIndex = (pageNumber - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    const paginatedGigs = allRecommendedGigs.slice(startIndex, endIndex);
+
+    res.status(200).json(
+      new ApiResponse(200, paginatedGigs, {
+        pagination: {
+          currentPage: pageNumber,
+          totalPages: Math.ceil(totalGigs / pageSize),
+          totalGigs: totalGigs,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching recommended gigs:", error);
+    throw new ApiError(500, "Failed to fetch recommended gigs");
+  }
+});
+
 export {
   getAllGigs,
   getSingleGig,
@@ -159,4 +207,5 @@ export {
   getGigsByClient,
   updateGigs,
   deleteGigs,
+  getRecommendedGigs,
 };
