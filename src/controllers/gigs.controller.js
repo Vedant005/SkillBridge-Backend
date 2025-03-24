@@ -6,7 +6,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import axios from "axios";
 
 const getAllGigs = asyncHandler(async (req, res) => {
-  const { gigId } = req.query; // From localStorage
+  const { gigId } = req.query;
   const { page = 1, limit = 20 } = req.query;
 
   const pageNumber = parseInt(page, 10);
@@ -45,13 +45,8 @@ const getAllGigs = asyncHandler(async (req, res) => {
       }
     }
 
-    // ✅ Combine both recommended and regular gigs
-    const combinedGigs = [
-      ...recommendedGigs, // Recommended gigs first
-      ...clientsWithGigs, // Regular gigs below
-    ];
+    const combinedGigs = [...recommendedGigs, ...clientsWithGigs];
 
-    // ✅ Pagination metadata
     const totalGigs = await Client.aggregate([
       { $unwind: "$gigs" },
       { $count: "totalGigs" },
