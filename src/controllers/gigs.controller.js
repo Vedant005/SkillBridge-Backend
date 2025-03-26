@@ -32,21 +32,58 @@ const getAllGigs = asyncHandler(async (req, res) => {
       },
     ]);
 
-    // ✅ Fetch recommended gigs if gigId exists
+    //  Sentiment Analysis Logic
+    regularGigs = clientsWithGigs.map((client) => {
+      const { gigs, ...clientData } = client;
+
+      // Extract reviews and feedback score
+      const reviews = gigs.client_total_reviews || 0;
+      const feedback = gigs.client_total_feedback || 0;
+
+      // Determine sentiment based on feedback
+      let sentiment = "Neutral";
+      if (feedback >= 4.0) {
+        sentiment = "Positive";
+      } else if (feedback >= 2.5 && feedback < 4.0) {
+        sentiment = "Neutral";
+      } else if (feedback > 0) {
+        sentiment = "Negative";
+      }
+
+      return {
+        ...clientData,
+        gigs: {
+          ...gigs,
+          sentiment,
+          total_reviews: reviews,
+          feedback_score: feedback,
+        },
+      };
+    });
+
+    //  Fetch recommended gigs if gigId exists
     if (gigId) {
       try {
         const response = await axios.get(
           `http://127.0.0.1:5000/recommend?gig_id=${gigId}`
         );
-        recommendedGigs = response.data || [];
+
+        recommendedGigs = response.data.map((gig) => ({
+          ...gig,
+          gigs: {
+            ...gig.gigs,
+            sentiment: "Recommended", // Recommended tag for these gigs
+          },
+        }));
       } catch (error) {
         console.error("Failed to fetch recommended gigs:", error);
         recommendedGigs = [];
       }
     }
 
-    const combinedGigs = [...recommendedGigs, ...clientsWithGigs];
-
+    //  Combine both recommended and regular gigs
+    const combinedGigs = [...recommendedGigs, ...regularGigs];
+    //  Pagination metadata
     const totalGigs = await Client.aggregate([
       { $unwind: "$gigs" },
       { $count: "totalGigs" },
