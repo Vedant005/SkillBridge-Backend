@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  chatbotHandler,
   createGigs,
   deleteGigs,
   getAllGigs,
@@ -8,6 +9,8 @@ import {
 } from "../controllers/gigs.controller.js";
 
 const router = Router();
+
+router.route("/chat").get(chatbotHandler);
 
 router.route("/").get(getAllGigs);
 
