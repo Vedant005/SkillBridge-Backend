@@ -152,7 +152,7 @@ const getAllGigs = asyncHandler(async (req, res) => {
   let regularGigs = [];
 
   try {
-    // ✅ Fetch regular gigs (paginated)
+    // Fetch regular gigs (paginated)
     const clientsWithGigs = await Client.aggregate([
       { $unwind: "$gigs" },
       { $skip: (pageNumber - 1) * pageSize },
@@ -208,7 +208,7 @@ const getAllGigs = asyncHandler(async (req, res) => {
           ...gig,
           gigs: {
             ...gig.gigs,
-            sentiment: "Recommended", // Recommended tag for these gigs
+            sentiment: "Recommended",
           },
         }));
       } catch (error) {
@@ -217,9 +217,8 @@ const getAllGigs = asyncHandler(async (req, res) => {
       }
     }
 
-    //  Combine both recommended and regular gigs
     const combinedGigs = [...recommendedGigs, ...regularGigs];
-    //  Pagination metadata
+
     const totalGigs = await Client.aggregate([
       { $unwind: "$gigs" },
       { $count: "totalGigs" },
@@ -288,7 +287,6 @@ const getSingleGig = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, gig, "Gig fetched successfully with sentiment"));
 });
 
-// Create Gig
 const createGigs = asyncHandler(async (req, res) => {
   const { clientId } = req.params;
   const gigData = req.body;
@@ -318,7 +316,6 @@ const getGigsByClient = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, client.gigs, "Gigs fetched successfully"));
 });
 
-// Update Gig
 const updateGigs = asyncHandler(async (req, res) => {
   const { clientId, gigId } = req.params;
   const updatedData = req.body;
@@ -339,7 +336,6 @@ const updateGigs = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, gig, "Gig updated successfully"));
 });
 
-// 🔥 Delete Gig for a Client
 const deleteGigs = asyncHandler(async (req, res) => {
   const { clientId, gigId } = req.params;
 
@@ -354,6 +350,29 @@ const deleteGigs = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, "Gig deleted successfully"));
 });
 
+const predictPrice = asyncHandler(async (req, res) => {
+  const data = req.body;
+
+  if (!data) {
+    throw new ApiError(401, "Content needed!");
+  }
+
+  const response = await axios.post(
+    "http://127.0.0.1:5000/predict_price",
+    data
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        response.data,
+        "Predicted Price for the gig has been calculated"
+      )
+    );
+});
+
 export {
   chatbotHandler,
   getAllGigs,
@@ -362,4 +381,5 @@ export {
   getGigsByClient,
   updateGigs,
   deleteGigs,
+  predictPrice,
 };
