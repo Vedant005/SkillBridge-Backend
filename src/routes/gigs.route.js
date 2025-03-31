@@ -5,6 +5,7 @@ import {
   deleteGigs,
   getAllGigs,
   getSingleGig,
+  predictPrice,
   updateGigs,
 } from "../controllers/gigs.controller.js";
 
@@ -21,5 +22,7 @@ router.route("/create").post(createGigs);
 router.route("/update").patch(updateGigs);
 
 router.route("/delete").delete(deleteGigs);
+
+router.route("/predict-price").post(predictPrice);
 
 export default router;
