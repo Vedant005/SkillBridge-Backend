@@ -21,7 +21,11 @@ app.use(cookieParser());
 // routes import
 
 import gigsRouter from "./routes/gigs.route.js";
+import clientRouter from "./routes/client.route.js";
+import freelancerRouter from "./routes/freelancer.route.js";
 
 app.use("/api/v1/gigs", gigsRouter);
+app.use("/api/v1/client", clientRouter);
+app.use("/api/v1/freelancer", freelancerRouter);
 
 export { app };
