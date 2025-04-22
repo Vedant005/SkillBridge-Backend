@@ -7,7 +7,7 @@ import { HfInference } from "@huggingface/inference";
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
-const chatWithAI = async (query, gigs = []) => {
+const chatWithAI = async (query) => {
   const freelancingKeywords = [
     "freelance",
     "freelancer",
@@ -35,110 +35,53 @@ const chatWithAI = async (query, gigs = []) => {
     return "I specialize in freelancing topics only. Please ask me about freelancing, gigs, or hiring professionals.";
   }
 
-  const gigText =
-    gigs.length > 0
-      ? `Here are some gigs: ${JSON.stringify(gigs)}`
-      : "No gigs were found for this query.";
-
-  // Cleaner prompt format (Mistral-7B prefers [INST] tags)
   const prompt = `
     [INST] <<SYS>>
     You are a helpful freelancing assistant. Answer concisely. 
-    ONLY answer questions related to freelancing, gigs, hiring professionals,learning skills or remote work.
+    ONLY answer questions related to freelancing, gigs, hiring professionals, learning skills, or remote work.
     If the question is unrelated, respond: "I specialize in freelancing topics only."
+    If the question is a hi hello then respond appropriate answers
     <</SYS>>
-    
+
     User Question: ${query}
-    Gigs Data: ${gigText}
-    
+
     Provide a clear, actionable response. [/INST]
   `;
 
   const response = await hf.textGeneration({
-    model: "mistralai/Mistral-7B-Instruct-v0.1",
+    model: "mistralai/Mistral-7B-Instruct-v0.3",
     inputs: prompt,
-    parameters: {
-      temperature: 0.7,
-      max_new_tokens: 300,
-      return_full_text: false,
-    },
   });
 
+  console.log("AI Response:", response);
   return response.generated_text.trim();
 };
 
 const chatbotHandler = asyncHandler(async (req, res) => {
-  const { query, page = 1, limit = 10 } = req.query;
-  const pageNumber = parseInt(page, 10);
-  const pageSize = parseInt(limit, 10);
+  const { query } = req.query;
 
-  let gigs = [];
   if (!query) {
     return res
       .status(400)
       .json(new ApiResponse(400, null, "Query parameter is required"));
   }
 
-  const gigKeywords = [
-    "React",
-    "Python",
-    "project",
-    "developer",
-    "devlopment",
-    "client",
-    "job",
-    "freelance",
-  ];
-  const isGigQuery = gigKeywords.some((kw) => query.toLowerCase().includes(kw));
+  console.log(`Processing AI response for: ${query}`);
 
-  if (isGigQuery) {
-    try {
-      const clientsWithGigs = await Client.aggregate([
-        { $unwind: "$gigs" },
-        { $match: { "gigs.title": { $regex: query, $options: "i" } } },
-        { $skip: (pageNumber - 1) * pageSize },
-        { $limit: pageSize },
-        {
-          $project: {
-            _id: 0,
-            clientId: "$_id",
-            email: 1,
-            location: 1,
-            gig: "$gigs",
-          },
-        },
-      ]);
+  try {
+    const aiResponse = await chatWithAI(query);
 
-      gigs = clientsWithGigs.map((client) => {
-        const feedback = client.gig.client_total_feedback || 0;
-        let sentiment = "Neutral";
-
-        if (feedback >= 4.0) sentiment = "Positive";
-        else if (feedback >= 2.5) sentiment = "Neutral";
-        else sentiment = "Negative";
-
-        return {
-          ...client,
-          sentiment,
-        };
-      });
-    } catch (error) {
-      console.error("Error fetching gigs:", error);
-    }
+    res
+      .status(200)
+      .json(
+        new ApiResponse(200, { ai_response: aiResponse }, "Chatbot response")
+      );
+  } catch (error) {
+    console.error("Error processing AI response:", error);
+    res
+      .status(500)
+      .json(new ApiResponse(500, null, "Failed to process request"));
   }
-
-  const aiResponse = await chatWithAI(query, gigs);
-
-  res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        gigs: "No gigs found for this query",
-        ai_response: aiResponse,
-      },
-      "Chatbot response"
-    )
-  );
 });
 
 const getAllGigs = asyncHandler(async (req, res) => {
