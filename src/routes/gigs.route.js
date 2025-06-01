@@ -15,7 +15,7 @@ router.route("/chat").get(chatbotHandler);
 
 router.route("/").get(getAllGigs);
 
-router.route("/:gigId").get(getSingleGig);
+router.route("/:id").get(getSingleGig);
 
 router.route("/create").post(createGigs);
 
