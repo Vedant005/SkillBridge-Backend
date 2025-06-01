@@ -13,7 +13,7 @@ A full-stack freelancing platform connecting clients and freelancers with intell
 - **Backend**: Node.js, Express.js
 - **Database**: MongoDB
 
-- ***
+---
 
 ## 📁 Project Setup
 
