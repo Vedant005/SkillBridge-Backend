@@ -51,6 +51,13 @@ CLOUDINARY_API_KEY=abcdef
 CLOUDINARY_API_SECRET=abcdefg
 ```
 
+- To run
+
+```
+npm run dev
+
+```
+
 ## API Endpoints
 
 ### Client Endpoints
